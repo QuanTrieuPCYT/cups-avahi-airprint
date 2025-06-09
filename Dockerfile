@@ -1,13 +1,8 @@
 FROM alpine:3.20
 
-# Install the packages we need. Avahi will be included
+# Install the packages we need
 RUN echo -e "https://dl-cdn.alpinelinux.org/alpine/edge/testing\nhttps://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories &&\
-	apk add --update cups \
-	cups-libs \
-	cups-pdf \
-	cups-client \
-	cups-filters \
-	cups-dev \
+	apk add --update \
 	ghostscript \
 	hplip \
 	avahi \
@@ -19,7 +14,49 @@ RUN echo -e "https://dl-cdn.alpinelinux.org/alpine/edge/testing\nhttps://dl-cdn.
 	rsync \
 	py3-pycups \
 	perl \
+	# CUPS build dependencies
+	openssl-dev \
+	zlib-dev \
+	libusb-dev \
+	libpng-dev \
+	libjpeg-turbo-dev \
+	gnutls-dev \
+	krb5-dev \
+	acl-dev \
+	linux-pam-dev \
 	&& rm -rf /var/cache/apk/*
+
+# Build and install CUPS from source
+RUN wget https://github.com/OpenPrinting/cups/releases/download/v2.4.12/cups-2.4.12-source.tar.gz && \
+    tar xzf cups-2.4.12-source.tar.gz && \
+    cd cups-2.4.12 && \
+    ./configure --prefix=/usr \
+                --sysconfdir=/etc \
+                --localstatedir=/var \
+                --with-cups-user=root \
+                --with-cups-group=root \
+                --with-system-groups=root \
+                --enable-ssl \
+                --enable-raw-printing \
+                --disable-pam \
+                --enable-dbus=no \
+                --disable-avahi \
+                --enable-libusb \
+                --enable-shared \
+                --enable-relro \
+                --enable-threads \
+                --enable-64bit \
+                --enable-ipv6 \
+                --disable-dnssd \
+                --disable-systemd \
+                --disable-launchd \
+                --enable-gnutls \
+                --enable-acl \
+                --enable-openssl && \
+    make -j$(nproc) && \
+    make install && \
+    cd .. && \
+    rm -rf cups-2.4.12 cups-2.4.12-source.tar.gz
 
 # Build and install brlaser from source
 RUN apk add --no-cache git cmake && \
