@@ -24,6 +24,7 @@ RUN echo -e "https://dl-cdn.alpinelinux.org/alpine/edge/testing\nhttps://dl-cdn.
 	krb5-dev \
 	acl-dev \
 	linux-pam-dev \
+	linux-headers \
 	&& rm -rf /var/cache/apk/*
 
 # Create cups user and group
