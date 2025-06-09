@@ -26,6 +26,9 @@ RUN echo -e "https://dl-cdn.alpinelinux.org/alpine/edge/testing\nhttps://dl-cdn.
 	linux-pam-dev \
 	&& rm -rf /var/cache/apk/*
 
+# Create cups user and group
+RUN addgroup -S cups && adduser -S -G cups cups
+
 # Build and install CUPS from source
 RUN wget https://github.com/OpenPrinting/cups/releases/download/v2.4.12/cups-2.4.12-source.tar.gz && \
     tar xzf cups-2.4.12-source.tar.gz && \
@@ -33,26 +36,19 @@ RUN wget https://github.com/OpenPrinting/cups/releases/download/v2.4.12/cups-2.4
     ./configure --prefix=/usr \
                 --sysconfdir=/etc \
                 --localstatedir=/var \
-                --with-cups-user=root \
-                --with-cups-group=root \
-                --with-system-groups=root \
-                --enable-ssl \
+                --with-cups-user=cups \
+                --with-cups-group=cups \
+                --with-system-groups=cups \
                 --enable-raw-printing \
                 --disable-pam \
                 --enable-dbus=no \
-                --disable-avahi \
                 --enable-libusb \
                 --enable-shared \
                 --enable-relro \
-                --enable-threads \
-                --enable-64bit \
-                --enable-ipv6 \
-                --disable-dnssd \
-                --disable-systemd \
-                --disable-launchd \
-                --enable-gnutls \
                 --enable-acl \
-                --enable-openssl && \
+                --disable-dnssd \
+                --disable-avahi \
+                --disable-bonjour && \
     make -j$(nproc) && \
     make install && \
     cd .. && \
@@ -98,7 +94,7 @@ CMD ["/root/run_cups.sh"]
 
 # Baked-in config file changes
 RUN sed -i 's/Listen localhost:631/Listen 0.0.0.0:631/' /etc/cups/cupsd.conf && \
-	sed -i 's/Browsing Off/Browsing On/' /etc/cups/cupsd.conf && \
+	sed -i 's/Browsing On/Browsing Off/' /etc/cups/cupsd.conf && \
  	sed -i 's/IdleExitTimeout/#IdleExitTimeout/' /etc/cups/cupsd.conf && \
 	sed -i 's/<Location \/>/<Location \/>\n  Allow All/' /etc/cups/cupsd.conf && \
 	sed -i 's/<Location \/admin>/<Location \/admin>\n  Allow All\n  Require user @SYSTEM/' /etc/cups/cupsd.conf && \
@@ -108,4 +104,7 @@ RUN sed -i 's/Listen localhost:631/Listen 0.0.0.0:631/' /etc/cups/cupsd.conf && 
 	echo "DefaultEncryption Never" >> /etc/cups/cupsd.conf && \
 	echo "ReadyPaperSizes A4,TA4,4X6FULL,T4X6FULL,2L,T2L,A6,A5,B5,L,TL,INDEX5,8x10,T8x10,4X7,T4X7,Postcard,TPostcard,ENV10,EnvDL,ENVC6,Letter,Legal" >> /etc/cups/cupsd.conf && \
 	echo "DefaultPaperSize Letter" >> /etc/cups/cupsd.conf && \
-	echo "pdftops-renderer ghostscript" >> /etc/cups/cupsd.conf
+	echo "pdftops-renderer ghostscript" >> /etc/cups/cupsd.conf && \
+	echo "BrowseAllow none" >> /etc/cups/cupsd.conf && \
+	echo "BrowseDeny all" >> /etc/cups/cupsd.conf && \
+	echo "BrowseProtocols none" >> /etc/cups/cupsd.conf
