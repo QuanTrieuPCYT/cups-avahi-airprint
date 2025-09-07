@@ -1,65 +1,26 @@
 FROM alpine:3.20
 
-# Install the packages we need. Avahi will be included
-RUN echo -e "https://dl-cdn.alpinelinux.org/alpine/edge/testing\nhttps://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories &&\
-	apk add --update cups \
-	cups-libs \
-	cups-pdf \
-	cups-client \
-	cups-filters \
-	cups-dev \
-	ghostscript \
-	hplip \
-	avahi \
-	inotify-tools \
-	python3 \
-	python3-dev \
-	build-base \
-	wget \
-	rsync \
-	py3-pycups \
-	perl \
-	&& rm -rf /var/cache/apk/*
+RUN apk add --no-cache make vim cups avahi cups-filters
+COPY foo2zjs.tar.gz .
+RUN tar xf foo2zjs.tar.gz
+WORKDIR foo2zjs
+RUN make install
+RUN make install-hotplug
+RUN make cups
+WORKDIR /
+RUN rm -R foo2zjs foo2zjs.tar.gz
+RUN apk del --purge vim make && apk cache purge
 
-# Build and install brlaser from source
-RUN apk add --no-cache git cmake && \
-    git clone https://github.com/pdewacht/brlaser.git && \
-    cd brlaser && \
-    cmake . && \
-    make && \
-    make install && \
-    cd .. && \
-    rm -rf brlaser
-
-# Build and install gutenprint from source
-RUN wget -O gutenprint-5.3.5.tar.xz https://sourceforge.net/projects/gimp-print/files/gutenprint-5.3/5.3.5/gutenprint-5.3.5.tar.xz/download && \
-    tar -xJf gutenprint-5.3.5.tar.xz && \
-    cd gutenprint-5.3.5 && \
-    # Patch to rename conflicting PAGESIZE identifiers to GPT_PAGESIZE in all files in src/testpattern
-    find src/testpattern -type f -exec sed -i 's/\bPAGESIZE\b/GPT_PAGESIZE/g' {} + && \
-    ./configure && \
-    make -j$(nproc) && \
-    make install && \
-    cd .. && \
-    rm -rf gutenprint-5.3.5 gutenprint-5.3.5.tar.xz && \
-    # Fix cups-genppdupdate script shebang
-    sed -i '1s|.*|#!/usr/bin/perl|' /usr/sbin/cups-genppdupdate
-
-# This will use port 631
 EXPOSE 631
 
-# We want a mount for these
 VOLUME /config
 VOLUME /services
 
-# Add scripts
 ADD root /
 RUN chmod +x /root/*
 
-#Run Script
 CMD ["/root/run_cups.sh"]
 
-# Baked-in config file changes
 RUN sed -i 's/Listen localhost:631/Listen 0.0.0.0:631/' /etc/cups/cupsd.conf && \
 	sed -i 's/Browsing Off/Browsing On/' /etc/cups/cupsd.conf && \
  	sed -i 's/IdleExitTimeout/#IdleExitTimeout/' /etc/cups/cupsd.conf && \
