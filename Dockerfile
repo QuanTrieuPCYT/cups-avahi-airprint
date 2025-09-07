@@ -1,6 +1,6 @@
 FROM alpine:3.20
 
-RUN apk add --no-cache make vim cups avahi cups-filters inotify-tools py3-pycups
+RUN apk add --no-cache make vim cups avahi cups-filters inotify-tools py3-pycups rsync
 COPY foo2zjs.tar.gz .
 RUN tar xf foo2zjs.tar.gz
 WORKDIR foo2zjs
